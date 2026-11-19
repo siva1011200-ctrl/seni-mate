@@ -16,8 +16,18 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from app.database import db_path, get_conn, init_db, upload_dir  # noqa: E402
-from app.storage import save_file  # noqa: E402
+from app.database import (  # noqa: E402
+    db_path,
+    get_conn,
+    init_db,
+    upload_dir,
+    using_postgres,
+)
+from app.storage import (  # noqa: E402
+    delete_all_remote_files,
+    save_file,
+    using_remote_storage,
+)
 
 USERS = [
     (1, "Arun Kumar", "arun@example.edu", "CSE", "senior", 4),
@@ -110,6 +120,13 @@ def file_bytes(kind: str, tag: str) -> bytes:
 
 
 def reset_dirs() -> None:
+    if using_postgres():
+        # Cloud DB: wipe rows and remote objects instead of deleting files.
+        with get_conn() as conn:
+            for table in ("reports", "bookmarks", "resources", "subjects", "users"):
+                conn.execute(f"DELETE FROM {table}")
+        delete_all_remote_files()
+        return
     path = db_path()
     if path.exists():
         path.unlink()
@@ -152,8 +169,19 @@ def seed() -> None:
                  status, reject, downloads, created),
             )
         conn.commit()
+    if using_postgres():
+        # explicit ids were inserted; move the SERIAL sequences past them
+        with get_conn() as conn:
+            for table in ("users", "subjects", "resources", "bookmarks", "reports"):
+                conn.execute(
+                    "SELECT setval(pg_get_serial_sequence(?, 'id'), "
+                    "(SELECT COALESCE(MAX(id), 1) FROM " + table + "))",
+                    (table,),
+                )
     print(f"Seeded {len(USERS)} users, {len(SUBJECTS)} subjects, {len(RESOURCES)} resources.")
-    print(f"DB: {db_path()}  Uploads: {up}")
+    db_label = "postgres (DATABASE_URL)" if using_postgres() else str(db_path())
+    up_label = "supabase storage" if using_remote_storage() else str(up)
+    print(f"DB: {db_label}  Uploads: {up_label}")
 
 
 def main() -> None:

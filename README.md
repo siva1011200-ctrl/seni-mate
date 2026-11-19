@@ -5,8 +5,9 @@ previous papers and preparation tips; moderators review them; juniors search,
 download and save them.
 
 - `frontend/` - React 18 + Vite + plain CSS
-- `backend/` - FastAPI + SQLite (standard-library `sqlite3`, no ORM)
+- `backend/` - FastAPI + SQLite/Postgres + Supabase Storage
 - `docs/PROJECT_REPORT.md` - full project report
+- `docs/DEPLOYMENT.md` - step-by-step guide to deploy on Vercel + Render + Supabase
 
 ## Prerequisites
 
@@ -32,6 +33,13 @@ dependencies if missing, resets and seeds the demo database, then starts:
 
 - Frontend: http://localhost:5173
 - Backend API docs: http://localhost:8000/docs
+
+## Public deployment (Vercel + Render + Supabase)
+
+See **`docs/DEPLOYMENT.md`** for the full walkthrough: Supabase schema +
+storage bucket, Render web service (`render.yaml` included), Vercel project
+settings, environment variables, seeding the production database, and
+verification steps.
 
 ## Demo users
 

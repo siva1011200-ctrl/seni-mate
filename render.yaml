@@ -1,0 +1,25 @@
+# Render blueprint for the SeniMate backend.
+# In the Render dashboard: New -> Blueprint -> connect this repo.
+# Set the "sync: false" env vars in the dashboard (they are secrets).
+services:
+  - type: web
+    name: senimate-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Supabase Postgres connection string (secret)
+      - key: SUPABASE_URL
+        sync: false # https://<project-ref>.supabase.co
+      - key: SUPABASE_SERVICE_KEY
+        sync: false # service-role key - backend only, NEVER in frontend
+      - key: SUPABASE_BUCKET
+        value: resources
+      - key: ALLOWED_ORIGINS
+        sync: false # https://<your-app>.vercel.app (comma-separate for more)
+      - key: MAX_UPLOAD_MB
+        value: "10"

@@ -5,6 +5,11 @@ import * as mock from './mockData.js'
 
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
+// '/api' in dev (Vite proxies to localhost:8000).
+// In production set VITE_API_URL to the backend origin, e.g.
+// https://senimate-api.onrender.com  (no trailing slash, no /api suffix).
+const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
+
 let apiUserId = null
 
 export function setApiUser(id) {
@@ -33,7 +38,7 @@ async function parseError(res) {
 async function apiFetch(path, { method = 'GET', body, headers = {} } = {}) {
   let res
   try {
-    res = await fetch('/api' + path, { method, body, headers: authHeaders(headers) })
+    res = await fetch(API_BASE + path, { method, body, headers: authHeaders(headers) })
   } catch {
     throw new Error('Cannot reach the server. Check that the backend is running.')
   }

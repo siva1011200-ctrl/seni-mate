@@ -50,6 +50,9 @@ def make_docx(tag: str = "doc") -> bytes:
 
 @pytest.fixture()
 def env(tmp_path, monkeypatch):
+    # isolate from any real cloud credentials on the machine
+    for var in ("DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_KEY", "SUPABASE_BUCKET"):
+        monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("UPLOAD_DIR", str(tmp_path / "uploads"))
     seed.reset_dirs()

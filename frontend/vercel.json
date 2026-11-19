@@ -1,0 +1,19 @@
+# Vercel project settings for the SeniMate frontend.
+#
+# Dashboard setup (vercel.com -> New Project -> import this repo):
+#   Root Directory:        frontend
+#   Framework Preset:      Vite
+#   Build Command:         npm run build        (default for Vite)
+#   Output Directory:      dist                 (default for Vite)
+#   Install Command:       npm install          (default)
+#
+# Environment Variables (Project -> Settings -> Environment Variables):
+#   VITE_USE_MOCK=false
+#   VITE_API_URL=https://<your-render-service>.onrender.com
+#
+# No SPA rewrite is required: the app uses plain page state, not URL routes.
+# If you add client-side routing later, add a rewrite:
+#   { "source": "/(.*)", "destination": "/index.html" }
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

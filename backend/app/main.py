@@ -8,23 +8,34 @@ import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from . import storage
 from .database import get_conn, init_db
 from .storage import delete_file, file_path, sanitize_filename, save_file
 from .validators import check_file, check_metadata
 
 app = FastAPI(title="SeniMate API")
 
+# Comma-separated origins via ALLOWED_ORIGINS; localhost defaults for dev.
+_cors_origins = [
+    o.strip()
+    for o in os.environ.get(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -195,11 +206,13 @@ async def create_resource(
     stored_name = save_file(content, f".{ext}")
     try:
         with get_conn() as conn:
-            cur = conn.execute(
+            # RETURNING id works on both SQLite (>=3.35) and Postgres
+            row = conn.execute(
                 """INSERT INTO resources
                    (title, description, resource_type, subject_id, uploader_id,
                     file_name, stored_name, file_hash, status, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+                   RETURNING id""",
                 (
                     clean_title,
                     description,
@@ -211,8 +224,8 @@ async def create_resource(
                     file_hash,
                     now_iso(),
                 ),
-            )
-            rid = cur.lastrowid
+            ).fetchone()
+            rid = row["id"]
             row = get_resource_or_404(conn, rid, user["id"])
     except Exception:
         delete_file(stored_name)
@@ -275,12 +288,34 @@ def get_resource(rid: int, user: dict = Depends(get_current_user)):
     return resource_json(r, user)
 
 
+def _content_disposition(filename: str) -> str:
+    safe = sanitize_filename(filename)
+    ascii_name = "".join(ch if ord(ch) < 128 else "_" for ch in safe)
+    return (
+        f'attachment; filename="{ascii_name}"; '
+        f"filename*=UTF-8''{quote(safe)}"
+    )
+
+
 @app.get("/resources/{rid}/download")
 def download_resource(rid: int, user: dict = Depends(get_current_user)):
     with get_conn() as conn:
         r = get_resource_or_404(conn, rid, user["id"])
         if not can_access(r, user):
             raise HTTPException(status_code=403, detail="You don't have access to this resource.")
+        if storage.using_remote_storage():
+            data = storage.read_file_bytes(r["stored_name"])
+            if data is None:
+                raise HTTPException(status_code=404, detail="File not found.")
+            conn.execute(
+                "UPDATE resources SET download_count = download_count + 1 WHERE id = ?",
+                (r["id"],),
+            )
+            return Response(
+                content=data,
+                media_type="application/octet-stream",
+                headers={"Content-Disposition": _content_disposition(r["file_name"])},
+            )
         path = file_path(r["stored_name"])
         if path is None:
             raise HTTPException(status_code=404, detail="File not found.")
