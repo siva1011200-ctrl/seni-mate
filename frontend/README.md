@@ -16,16 +16,18 @@ npm run preview  # serve the production build
 
 Everything is switched by `VITE_USE_MOCK` in `.env`:
 
-- `VITE_USE_MOCK=true` (default): built-in fake backend in `src/services/mockData.js`.
-  Data is in-memory, so uploads, approvals, rejects, bookmarks and download counts really
-  change during the session but reset on reload. A "Demo mode" banner is shown.
-- `VITE_USE_MOCK=false`: real backend. All calls go to `/api` on the Vite dev server, which
-  proxies to `http://localhost:8000` and strips the `/api` prefix (see `vite.config.js`).
-  Every request sends the `X-User-Id` header of the user picked in the "Signed in as"
-  dropdown.
+- `VITE_USE_MOCK=false` (current `.env`): real backend. All calls go to `/api` on the
+  Vite dev server, which proxies to `http://localhost:8000` and strips the `/api`
+  prefix (see `vite.config.js`). Every request sends the `X-User-Id` header of the
+  user picked in the "Signed in as" dropdown. Start the backend first
+  (`cd ../backend`, `.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000`
+  on Windows) after running `python seed.py --reset` once.
+- `VITE_USE_MOCK=true`: built-in fake backend in `src/services/mockData.js`.
+  Data is in-memory, so uploads, approvals, rejects, bookmarks and download counts
+  really change during the session but reset on reload. A "Demo mode" banner is shown.
 
-To try the real backend: make sure it is running on port 8000, set `VITE_USE_MOCK=false`
-in `.env`, restart `npm run dev`, and repeat the demo flow. Set it back to `true` afterwards.
+To switch back to the real backend: make sure it is running on port 8000, set
+`VITE_USE_MOCK=false` in `.env`, restart `npm run dev`.
 
 ## Folder structure
 

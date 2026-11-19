@@ -4,7 +4,7 @@
     "pass": true
   },
   {
-    "name": "Demo banner shown",
+    "name": "No demo banner in real mode",
     "pass": true
   },
   {
@@ -64,7 +64,7 @@
     "pass": true
   },
   {
-    "name": "Exe rejected client-side",
+    "name": "Exe rejected",
     "pass": true
   },
   {
@@ -73,6 +73,10 @@
   },
   {
     "name": "Oversize file error",
+    "pass": true
+  },
+  {
+    "name": "Fake pdf content mismatch",
     "pass": true
   },
   {
@@ -104,11 +108,19 @@
     "pass": true
   },
   {
+    "name": "Rejected item shows reason to uploader",
+    "pass": true
+  },
+  {
     "name": "Newly approved resource found in search",
     "pass": true
   },
   {
     "name": "New resource shows Verified badge",
+    "pass": true
+  },
+  {
+    "name": "Rejected resource absent from library",
     "pass": true
   },
   {

@@ -1,23 +1,30 @@
-// End-to-end smoke test for the SeniMate frontend in mock mode.
-// Run: node scripts/e2e-check.mjs  (dev server must be running on :5173)
+// End-to-end smoke test for the SeniMate frontend against the REAL backend.
+// Run: node scripts/e2e-check.mjs  (backend on :8000 and dev server on :5173
+// must be running; the script reseeds the backend first via seed.py --reset)
 import { chromium } from 'playwright-core'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const BASE = 'http://localhost:5173'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const TMP = path.join(__dirname, '.tmp-files')
-fs.mkdirSync(TMP, { recursive: true })
+const BACKEND = path.join(__dirname, '..', '..', 'backend')
+const DEMO = path.join(BACKEND, 'demo_files')
 
-const pdfPath = path.join(TMP, 'demo-upload.pdf')
-fs.writeFileSync(pdfPath, '%PDF-1.4 demo file for SeniMate upload test')
-const exePath = path.join(TMP, 'evil.exe')
-fs.writeFileSync(exePath, 'MZ fake executable')
-const emptyPath = path.join(TMP, 'empty.pdf')
-fs.writeFileSync(emptyPath, '')
-const bigPath = path.join(TMP, 'big.pdf')
-fs.writeFileSync(bigPath, Buffer.alloc(11.2 * 1024 * 1024, 1))
+// Reseed the backend so every run starts from the same demo data.
+const venvPy =
+  process.platform === 'win32'
+    ? path.join(BACKEND, '.venv', 'Scripts', 'python.exe')
+    : path.join(BACKEND, '.venv', 'bin', 'python')
+const py = fs.existsSync(venvPy) ? venvPy : process.platform === 'win32' ? 'python' : 'python3'
+execFileSync(py, ['seed.py', '--reset'], { cwd: BACKEND, stdio: 'inherit' })
+
+const pdfPath = path.join(DEMO, 'valid-notes.pdf')
+const exePath = path.join(DEMO, 'program.exe')
+const emptyPath = path.join(DEMO, 'empty.pdf')
+const bigPath = path.join(DEMO, 'too-big.pdf')
+const fakePath = path.join(DEMO, 'fake.pdf')
 
 const results = []
 function check(name, cond, extra = '') {
@@ -44,7 +51,7 @@ try {
   // ---------- (a) Junior: Karthik is default ----------
   await page.goto(BASE, { waitUntil: 'networkidle' })
   check('Home loads with hero headline', await has(page, 'Every note and question paper your seniors kept'))
-  check('Demo banner shown', await has(page, 'Demo mode: using built-in sample data.'))
+  check('No demo banner in real mode', !(await has(page, 'Demo mode: using built-in sample data.')))
   check('Default user is a junior', await has(page, 'Karthik R (junior)'))
   check('Subbar hides Upload for junior', !(await page.locator('.subbar').innerText()).includes('Upload'))
   check('Subbar hides Review queue for junior', !(await page.locator('.subbar').innerText()).includes('Review queue'))
@@ -52,39 +59,39 @@ try {
   // hero search for "Data"
   await page.fill('#hero-search-input', 'Data')
   await page.click('.hero-search button[type=submit]')
-  await page.waitForTimeout(600)
+  await page.waitForTimeout(800)
   let t = await bodyText(page)
   check('Search "Data" returns results', /\d+ resources found/.test(t) && !t.includes('No resources match'))
 
   // filters: semester, subject, type
   await page.selectOption('#lib-sem', '3')
-  await page.waitForTimeout(600)
+  await page.waitForTimeout(700)
   t = await bodyText(page)
   check('Semester filter narrows results', /resources found/.test(t))
   await page.selectOption('#lib-subject', { index: 1 })
-  await page.waitForTimeout(600)
+  await page.waitForTimeout(700)
   await page.selectOption('#lib-type', 'previous_paper')
-  await page.waitForTimeout(600)
+  await page.waitForTimeout(700)
   t = await bodyText(page)
   check('Combined filters still render result list or empty state', /resources found|No resources match/.test(t))
 
   // gibberish -> empty state
   await page.fill('#lib-q', 'zzzznotathing')
-  await page.waitForTimeout(700)
+  await page.waitForTimeout(800)
   check('Empty search shows empty state', await has(page, 'No resources match these filters. Remove a filter or try a shorter keyword.'))
   await page.click('text=Clear filters')
-  await page.waitForTimeout(600)
+  await page.waitForTimeout(700)
 
   // open first resource
   await page.locator('.row-title').first().click()
-  await page.waitForTimeout(500)
+  await page.waitForTimeout(600)
   t = await bodyText(page)
   check('Details page shows Verified badge', t.includes('Verified'))
   check('Details shows Download file and Save for later', t.includes('Download file') && t.includes('Save for later'))
 
-  // download (blob save; just verify no error and count path works)
+  // download (real file via FileResponse)
   const [download] = await Promise.all([
-    page.waitForEvent('download', { timeout: 5000 }).catch(() => null),
+    page.waitForEvent('download', { timeout: 8000 }).catch(() => null),
     page.click('text=Download file'),
   ])
   check('Download file triggers a file download', !!download, download ? await download.suggestedFilename() : 'no download event')
@@ -97,10 +104,10 @@ try {
 
   // back to library, check Saved page
   await page.click('text=Back')
-  await page.waitForTimeout(300)
+  await page.waitForTimeout(400)
   await page.click('.subbar-link:has-text("Saved")')
-  await page.waitForTimeout(500)
-  check('Saved page lists the bookmarked resource', !(await bodyText(page)).includes('Nothing saved yet') && (await page.locator('.resource-row').count()) > 0)
+  await page.waitForTimeout(600)
+  check('Saved page lists the bookmarked resource', (await bodyText(page)).includes('Database Design and Management'))
 
   // ---------- (b) Senior: Arun ----------
   await selectUser(page, 'Arun Kumar (senior)')
@@ -117,7 +124,7 @@ try {
   }
   async function submitUpload() {
     await page.click('button[type=submit]:has-text("Submit for review")')
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(800)
   }
 
   // missing title
@@ -130,7 +137,7 @@ try {
   // .exe
   await fillUpload({ title: 'exe test', file: exePath })
   await submitUpload()
-  check('Exe rejected client-side', await has(page, 'File type .exe is not allowed. Use PDF, DOCX, PPTX, PNG or JPG.'))
+  check('Exe rejected', await has(page, 'File type .exe is not allowed. Use PDF, DOCX, PPTX, PNG or JPG.'))
 
   // empty file
   await fillUpload({ title: 'empty test', file: emptyPath })
@@ -140,7 +147,12 @@ try {
   // >10MB
   await fillUpload({ title: 'big test', file: bigPath })
   await submitUpload()
-  check('Oversize file error', await has(page, 'File is too large (11.2 MB). The limit is 10 MB.'))
+  check('Oversize file error', await has(page, 'File is too large (11.0 MB). The limit is 10 MB.'))
+
+  // fake pdf (content mismatch)
+  await fillUpload({ title: 'fake test', file: fakePath })
+  await submitUpload()
+  check('Fake pdf content mismatch', await has(page, 'The file content does not match its extension.'))
 
   // valid upload
   await fillUpload()
@@ -148,7 +160,7 @@ try {
   t = await bodyText(page)
   check('Valid upload shows Submitted for review', t.includes('Submitted for review') && t.includes('Pending review'))
 
-  // duplicate same file
+  // duplicate same file (backend detects by hash)
   await page.click('text=Upload another')
   await page.waitForTimeout(300)
   await fillUpload({ title: 'duplicate attempt' })
@@ -157,7 +169,7 @@ try {
 
   // My uploads shows pending item
   await page.click('.subbar-link:has-text("My uploads")')
-  await page.waitForTimeout(500)
+  await page.waitForTimeout(600)
   t = await bodyText(page)
   check('My uploads shows new pending item', t.includes(UP_TITLE) && t.includes('Pending review'))
 
@@ -165,38 +177,56 @@ try {
   await selectUser(page, 'Priya N (moderator)')
   check('Moderator sees Review queue', (await page.locator('.subbar').innerText()).includes('Review queue'))
   await page.click('.subbar-link:has-text("Review queue")')
-  await page.waitForTimeout(500)
+  await page.waitForTimeout(600)
   t = await bodyText(page)
   check('Review queue lists pending uploads', t.includes(UP_TITLE) && t.includes('Algorithms Unit 3 slides'))
 
   // reject without reason
-  const rejectButtons = page.locator('button:has-text("Reject")')
-  await rejectButtons.first().click()
+  await page.locator('button:has-text("Reject")').first().click()
   await page.waitForTimeout(200)
-  const confirmReject = page.locator('button:has-text("Confirm reject")')
-  await confirmReject.click()
-  await page.waitForTimeout(300)
+  await page.locator('button:has-text("Confirm reject")').click()
+  await page.waitForTimeout(400)
   check('Reject without reason shows error', await has(page, 'Give a reason when rejecting.'))
   await page.click('button:has-text("Cancel")')
   await page.waitForTimeout(200)
 
-  // approve the E2E upload: find its row's Approve button
+  // reject the seeded Algorithms slides with a reason
+  // (the inline reason box is a sibling rendered after the row, not inside it)
+  const slidesRow = page.locator('.resource-row', { hasText: 'Algorithms Unit 3 slides' })
+  await slidesRow.locator('button:has-text("Reject")').click()
+  await page.waitForTimeout(200)
+  await page.locator('.reject-box textarea').fill('E2E reject reason: blurry pages')
+  await page.locator('.reject-box button:has-text("Confirm reject")').click()
+  await page.waitForTimeout(600)
+
+  // approve the E2E upload
   const row = page.locator('.resource-row', { hasText: UP_TITLE })
   await row.locator('button:has-text("Approve")').click()
-  await page.waitForTimeout(500)
+  await page.waitForTimeout(600)
   t = await bodyText(page)
   check('Approved row removed from queue', !t.includes(UP_TITLE))
 
-  // ---------- (d) Junior sees it in Explore ----------
+  // ---------- rejected reason visible to uploader ----------
+  await selectUser(page, 'Divya S (senior)')
+  await page.click('.subbar-link:has-text("My uploads")')
+  await page.waitForTimeout(600)
+  t = await bodyText(page)
+  check('Rejected item shows reason to uploader', t.includes('E2E reject reason: blurry pages'))
+
+  // ---------- (d) Junior sees approved resource ----------
   await selectUser(page, 'Karthik R (junior)')
   await page.click('.nav-link:has-text("Explore Resources")')
   await page.waitForTimeout(400)
   await page.fill('#lib-q', 'linked lists deep dive')
-  await page.waitForTimeout(700)
+  await page.waitForTimeout(800)
   t = await bodyText(page)
   check('Newly approved resource found in search', t.includes(UP_TITLE))
   const approvedRow = page.locator('.resource-row', { hasText: UP_TITLE })
   check('New resource shows Verified badge', (await approvedRow.innerText()).includes('Verified'))
+  // rejected resource must NOT appear
+  await page.fill('#lib-q', 'greedy and dynamic programming')
+  await page.waitForTimeout(800)
+  check('Rejected resource absent from library', !(await bodyText(page)).includes('Algorithms Unit 3 slides'))
 
   // ---------- viewport checks ----------
   for (const w of [375, 1280]) {
@@ -206,7 +236,7 @@ try {
     const scrollW = await page.evaluate(() => document.documentElement.scrollWidth)
     check(`No horizontal scroll at ${w}px (home)`, scrollW <= w, `scrollWidth=${scrollW}`)
     await page.click('.nav-link:has-text("Explore Resources")')
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(600)
     const scrollW2 = await page.evaluate(() => document.documentElement.scrollWidth)
     check(`No horizontal scroll at ${w}px (library)`, scrollW2 <= w, `scrollWidth=${scrollW2}`)
     const navVisible = await page.locator('.main-nav').isVisible()
