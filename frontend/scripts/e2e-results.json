@@ -1,0 +1,138 @@
+[
+  {
+    "name": "Home loads with hero headline",
+    "pass": true
+  },
+  {
+    "name": "Demo banner shown",
+    "pass": true
+  },
+  {
+    "name": "Default user is a junior",
+    "pass": true
+  },
+  {
+    "name": "Subbar hides Upload for junior",
+    "pass": true
+  },
+  {
+    "name": "Subbar hides Review queue for junior",
+    "pass": true
+  },
+  {
+    "name": "Search \"Data\" returns results",
+    "pass": true
+  },
+  {
+    "name": "Semester filter narrows results",
+    "pass": true
+  },
+  {
+    "name": "Combined filters still render result list or empty state",
+    "pass": true
+  },
+  {
+    "name": "Empty search shows empty state",
+    "pass": true
+  },
+  {
+    "name": "Details page shows Verified badge",
+    "pass": true
+  },
+  {
+    "name": "Details shows Download file and Save for later",
+    "pass": true
+  },
+  {
+    "name": "Download file triggers a file download",
+    "pass": true
+  },
+  {
+    "name": "Save for later marks Saved",
+    "pass": true
+  },
+  {
+    "name": "Saved page lists the bookmarked resource",
+    "pass": true
+  },
+  {
+    "name": "Senior sees Upload link",
+    "pass": true
+  },
+  {
+    "name": "Missing title error",
+    "pass": true
+  },
+  {
+    "name": "Exe rejected client-side",
+    "pass": true
+  },
+  {
+    "name": "Empty file error",
+    "pass": true
+  },
+  {
+    "name": "Oversize file error",
+    "pass": true
+  },
+  {
+    "name": "Valid upload shows Submitted for review",
+    "pass": true
+  },
+  {
+    "name": "Duplicate file error",
+    "pass": true
+  },
+  {
+    "name": "My uploads shows new pending item",
+    "pass": true
+  },
+  {
+    "name": "Moderator sees Review queue",
+    "pass": true
+  },
+  {
+    "name": "Review queue lists pending uploads",
+    "pass": true
+  },
+  {
+    "name": "Reject without reason shows error",
+    "pass": true
+  },
+  {
+    "name": "Approved row removed from queue",
+    "pass": true
+  },
+  {
+    "name": "Newly approved resource found in search",
+    "pass": true
+  },
+  {
+    "name": "New resource shows Verified badge",
+    "pass": true
+  },
+  {
+    "name": "No horizontal scroll at 375px (home)",
+    "pass": true
+  },
+  {
+    "name": "No horizontal scroll at 375px (library)",
+    "pass": true
+  },
+  {
+    "name": "Navigation usable at 375px",
+    "pass": true
+  },
+  {
+    "name": "No horizontal scroll at 1280px (home)",
+    "pass": true
+  },
+  {
+    "name": "No horizontal scroll at 1280px (library)",
+    "pass": true
+  },
+  {
+    "name": "Navigation usable at 1280px",
+    "pass": true
+  }
+]
